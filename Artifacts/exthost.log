@@ -1,0 +1,15 @@
+2026-07-28 15:52:09.489 [info] Extension host with pid 11216 started
+2026-07-28 15:52:17.289 [info] ExtensionService#_doActivateExtension vscode.github-authentication, startup: false, activationEvent: 'onAuthenticationRequest:github'
+2026-07-28 15:52:17.559 [info] ExtensionService#_doActivateExtension vscode.emmet, startup: false, activationEvent: 'onLanguage'
+2026-07-28 15:52:17.736 [info] ExtensionService#_doActivateExtension saoudrizwan.claude-dev, startup: false, activationEvent: 'onLanguage'
+2026-07-28 15:52:45.092 [info] ExtensionService#_doActivateExtension Anthropic.claude-code, startup: false, activationEvent: 'onWebviewPanel:claudeVSCodePanel'
+2026-07-28 15:52:53.150 [info] ExtensionService#_doActivateExtension eamodio.gitlens, startup: false, activationEvent: 'onView:gitlens.views.commitDetails'
+2026-07-28 15:53:06.792 [info] ExtensionService#_doActivateExtension vscode.git-base, startup: true, activationEvent: '*', root cause: vscode.git
+2026-07-28 15:53:06.807 [info] ExtensionService#_doActivateExtension WakaTime.vscode-wakatime, startup: true, activationEvent: '*'
+2026-07-28 15:53:08.261 [info] ExtensionService#_doActivateExtension vscode.git, startup: true, activationEvent: '*'
+2026-07-28 15:53:08.624 [info] ExtensionService#_doActivateExtension vscode.github, startup: true, activationEvent: '*'
+2026-07-28 15:53:08.836 [info] ExtensionService#_doActivateExtension vscode.debug-auto-launch, startup: false, activationEvent: 'onStartupFinished'
+2026-07-28 15:53:09.041 [info] ExtensionService#_doActivateExtension vscode.merge-conflict, startup: false, activationEvent: 'onStartupFinished'
+2026-07-28 15:53:09.473 [info] ExtensionService#_doActivateExtension esbenp.prettier-vscode, startup: false, activationEvent: 'onStartupFinished'
+2026-07-28 15:53:09.512 [info] ExtensionService#_doActivateExtension ritwickdey.LiveServer, startup: false, activationEvent: 'onStartupFinished'
+2026-07-28 15:53:21.445 [info] Eager extensions activated

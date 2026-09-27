@@ -1,0 +1,47 @@
+{
+  "description": "Normalize VS Code extension inventory correlation fields from the scheduled Osquery pack",
+  "processors": [
+    {
+      "lowercase": {
+        "if": "ctx.event?.action == 'extension-inventory'",
+        "field": "package.name",
+        "target_field": "vscode.extension.id",
+        "ignore_missing": true
+      }
+    },
+    {
+      "gsub": {
+        "if": "ctx.event?.action == 'extension-inventory'",
+        "field": "osquery.profile_path",
+        "target_field": "vscode.user.profile_path",
+        "pattern": "\\\\+",
+        "replacement": "/",
+        "ignore_missing": true
+      }
+    },
+    {
+      "gsub": {
+        "if": "ctx.event?.action == 'extension-inventory'",
+        "field": "vscode.user.profile_path",
+        "pattern": "/+$",
+        "replacement": "",
+        "ignore_missing": true
+      }
+    },
+    {
+      "lowercase": {
+        "if": "ctx.event?.action == 'extension-inventory'",
+        "field": "vscode.user.profile_path",
+        "ignore_missing": true
+      }
+    },
+    {
+      "append": {
+        "if": "ctx.event?.action == 'extension-inventory' && (ctx.vscode?.user?.profile_path == null || ctx.vscode.user.profile_path == '')",
+        "field": "tags",
+        "value": "vscode-profile-path-unavailable",
+        "allow_duplicates": false
+      }
+    }
+  ]
+}

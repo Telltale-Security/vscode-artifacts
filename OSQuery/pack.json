@@ -1,0 +1,50 @@
+{
+  "name": "vscode-extension-inventory",
+  "description": "Full VS Code extension inventory for Windows user profiles, every 15 minutes",
+  "enabled": true,
+  "policy_ids": [
+    "scenario-windows-vscode-windows-policy"
+  ],
+  "queries": {
+    "vscode_extensions_inventory_windows": {
+      "query": "SELECT\n  u.username,\n  u.uuid AS user_sid,\n  u.directory AS profile_path,\n  lower(v.name) AS extension_id,\n  v.version,\n  v.publisher,\n  v.path,\n  CASE\n    WHEN v.installed_at > 0\n    THEN datetime(v.installed_at / 1000, 'unixepoch')\n  END AS installed_at_utc,\n  v.prerelease,\n  v.vscode_edition\nFROM users AS u\nCROSS JOIN vscode_extensions AS v USING (uid)\nWHERE v.name != ''\nORDER BY u.username, v.name;\n",
+      "interval": 900,
+      "platform": "windows",
+      "snapshot": true,
+      "removed": false,
+      "ecs_mapping": {
+        "package.name": {
+          "field": "extension_id"
+        },
+        "package.version": {
+          "field": "version"
+        },
+        "package.path": {
+          "field": "path"
+        },
+        "user.name": {
+          "field": "username"
+        },
+        "user.id": {
+          "field": "user_sid"
+        },
+        "event.kind": {
+          "value": "event"
+        },
+        "event.category": {
+          "value": [
+            "package"
+          ]
+        },
+        "event.type": {
+          "value": [
+            "info"
+          ]
+        },
+        "event.action": {
+          "value": "extension-inventory"
+        }
+      }
+    }
+  }
+}

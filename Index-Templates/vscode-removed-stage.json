@@ -1,0 +1,51 @@
+{
+  "index_patterns": [
+    "vscode-removed-stage-*"
+  ],
+  "priority": 501,
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0,
+      "index.default_pipeline": "vscode-removed-row"
+    },
+    "mappings": {
+      "dynamic_templates": [
+        {
+          "strings_as_keywords": {
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "keyword",
+              "ignore_above": 4096
+            }
+          }
+        }
+      ],
+      "properties": {
+        "extension_id": {
+          "type": "keyword"
+        },
+        "removal_reason": {
+          "type": "keyword"
+        },
+        "removal_date": {
+          "type": "date"
+        },
+        "security_rank": {
+          "type": "long"
+        },
+        "reason_unknown": {
+          "type": "boolean"
+        },
+        "message": {
+          "type": "keyword",
+          "index": false,
+          "doc_values": false
+        },
+        "line_number": {
+          "type": "long"
+        }
+      }
+    }
+  }
+}

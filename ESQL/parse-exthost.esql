@@ -1,0 +1,29 @@
+  FROM logs-filestream*
+  | WHERE data_stream.namespace == "windows_vscode"
+      AND message LIKE "*ExtensionService#_doActivateExtension*"
+  | GROK message """%{TIMESTAMP_ISO8601:vscode_time_text} \[%{LOGLEVEL:log_level}\] %{GREEDYDATA:vscode_message}"""
+  | GROK vscode_message """ExtensionService#_doActivateExtension %{DATA:extension_id}, startup: %{WORD:startup_text}, activationEvent: '%{DATA:activation_event}'(?:, root cause: %{GREEDYDATA:root_cause})?"""
+  | WHERE extension_id IS NOT NULL
+  | EVAL `@timestamp` = DATE_PARSE("yyyy-MM-dd HH:mm:ss.SSS", vscode_time_text),
+         `event.kind` = "event",
+         `event.category` = "package",
+         `event.type` = "start",
+         `event.action` = "extension-activated",
+         `event.module` = "vscode",
+         `event.provider` = "vscode",
+         `event.original` = message,
+         `log.level` = log_level,
+         `package.name` = extension_id,
+         `vscode.extension.startup` = TO_BOOLEAN(startup_text),
+         `vscode.extension.activation_event` = activation_event,
+         `vscode.extension.root_cause` = root_cause
+  | KEEP @timestamp,
+         event.kind, event.category, event.type, event.action,
+         event.module, event.provider, event.dataset, event.ingested, event.original,
+         host.name, log.level, log.file.path,
+         package.name,
+         vscode.extension.startup,
+         vscode.extension.activation_event,
+         vscode.extension.root_cause
+  | SORT @timestamp DESC
+  | LIMIT 1000

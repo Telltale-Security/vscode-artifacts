@@ -1,0 +1,9 @@
+  FROM logs-filestream.generic-windows_vscode
+  | WHERE event.action == "extension-activated"
+  | KEEP @timestamp, event.ingested, host.name,
+      package.name,
+      vscode.extension.activation_event,
+      vscode.extension.startup,
+      message
+  | SORT @timestamp DESC
+  | LIMIT 1000

@@ -1,0 +1,154 @@
+[
+    {
+        "identifier": {
+            "id": "ritwickdey.liveserver",
+            "uuid": "46cc5bbd-b098-4568-9b87-f91e07d26f2d"
+        },
+        "version": "5.7.10",
+        "location": {
+            "$mid": 1,
+            "path": "/C:/Users/vscode-lab/.vscode/extensions/ritwickdey.liveserver-5.7.10",
+            "scheme": "file"
+        },
+        "relativeLocation": "ritwickdey.liveserver-5.7.10",
+        "metadata": {
+            "installedTimestamp": 1790413313238,
+            "source": "gallery",
+            "id": "46cc5bbd-b098-4568-9b87-f91e07d26f2d",
+            "publisherId": "17fd9a78-e430-4a78-add2-ade4a8830352",
+            "publisherDisplayName": "Ritwick Dey",
+            "targetPlatform": "undefined",
+            "updated": false,
+            "private": false,
+            "isPreReleaseVersion": false,
+            "hasPreReleaseVersion": false
+        }
+    },
+    {
+        "identifier": {
+            "id": "esbenp.prettier-vscode",
+            "uuid": "96fa4707-6983-4489-b7c5-d5ffdfdcce90"
+        },
+        "version": "12.4.0",
+        "location": {
+            "$mid": 1,
+            "path": "/C:/Users/vscode-lab/.vscode/extensions/esbenp.prettier-vscode-12.4.0",
+            "scheme": "file"
+        },
+        "relativeLocation": "esbenp.prettier-vscode-12.4.0",
+        "metadata": {
+            "installedTimestamp": 1790413347972,
+            "source": "gallery",
+            "id": "96fa4707-6983-4489-b7c5-d5ffdfdcce90",
+            "publisherId": "d16f4e39-2ffb-44e3-9c0d-79d873570e3a",
+            "publisherDisplayName": "Prettier",
+            "targetPlatform": "undefined",
+            "updated": false,
+            "private": false,
+            "isPreReleaseVersion": false,
+            "hasPreReleaseVersion": false
+        }
+    },
+    {
+        "identifier": {
+            "id": "eamodio.gitlens",
+            "uuid": "4de763bd-505d-4978-9575-2b7696ecf94e"
+        },
+        "version": "19.2.0",
+        "location": {
+            "$mid": 1,
+            "path": "/C:/Users/vscode-lab/.vscode/extensions/eamodio.gitlens-19.2.0",
+            "scheme": "file"
+        },
+        "relativeLocation": "eamodio.gitlens-19.2.0",
+        "metadata": {
+            "installedTimestamp": 1790413350847,
+            "source": "gallery",
+            "id": "4de763bd-505d-4978-9575-2b7696ecf94e",
+            "publisherId": "678d198b-9b2e-49d3-96ff-6d801c9575df",
+            "publisherDisplayName": "GitKraken",
+            "targetPlatform": "undefined",
+            "updated": false,
+            "private": false,
+            "isPreReleaseVersion": false,
+            "hasPreReleaseVersion": false
+        }
+    },
+    {
+        "identifier": {
+            "id": "wakatime.vscode-wakatime",
+            "uuid": "f2fd462f-f1bd-4c62-b54f-59a4e5ffc6a3"
+        },
+        "version": "30.2.1",
+        "location": {
+            "$mid": 1,
+            "path": "/C:/Users/vscode-lab/.vscode/extensions/wakatime.vscode-wakatime-30.2.1",
+            "scheme": "file"
+        },
+        "relativeLocation": "wakatime.vscode-wakatime-30.2.1",
+        "metadata": {
+            "installedTimestamp": 1790413354847,
+            "source": "gallery",
+            "id": "f2fd462f-f1bd-4c62-b54f-59a4e5ffc6a3",
+            "publisherId": "27977793-9e84-451b-8977-744ce63f3d70",
+            "publisherDisplayName": "WakaTime",
+            "targetPlatform": "undefined",
+            "updated": false,
+            "private": false,
+            "isPreReleaseVersion": false,
+            "hasPreReleaseVersion": false
+        }
+    },
+    {
+        "identifier": {
+            "id": "anthropic.claude-code",
+            "uuid": "3c13ae49-babe-45fe-8c48-5e45077a62bf"
+        },
+        "version": "2.1.283",
+        "location": {
+            "$mid": 1,
+            "path": "/C:/Users/vscode-lab/.vscode/extensions/anthropic.claude-code-2.1.283-win32-x64",
+            "scheme": "file"
+        },
+        "relativeLocation": "anthropic.claude-code-2.1.283-win32-x64",
+        "metadata": {
+            "installedTimestamp": 1790413357402,
+            "source": "gallery",
+            "id": "3c13ae49-babe-45fe-8c48-5e45077a62bf",
+            "publisherId": "89769da0-cc4b-40b0-8216-93ffb5a96b56",
+            "publisherDisplayName": "Anthropic",
+            "targetPlatform": "win32-x64",
+            "updated": false,
+            "private": false,
+            "isPreReleaseVersion": false,
+            "hasPreReleaseVersion": false
+        }
+    },
+    {
+        "identifier": {
+            "id": "saoudrizwan.claude-dev"
+        },
+        "version": "4.1.21",
+        "location": {
+            "$mid": 1,
+            "fsPath": "c:\\Users\\vscode-lab\\.vscode\\extensions\\saoudrizwan.claude-dev-4.1.21",
+            "_sep": 1,
+            "external": "file:///c%3A/Users/vscode-lab/.vscode/extensions/saoudrizwan.claude-dev-4.1.21",
+            "path": "/c:/Users/vscode-lab/.vscode/extensions/saoudrizwan.claude-dev-4.1.21",
+            "scheme": "file"
+        },
+        "relativeLocation": "saoudrizwan.claude-dev-4.1.21",
+        "metadata": {
+            "installedTimestamp": 1790413368036,
+            "source": "gallery",
+            "id": "ad94c633-a9d5-4f78-b85f-c664e7d91a0f",
+            "publisherId": "6f42e67d-d7ea-4a53-8704-2ae8bf2d86f3",
+            "publisherDisplayName": "Cline",
+            "targetPlatform": "undefined",
+            "updated": false,
+            "private": false,
+            "isPreReleaseVersion": false,
+            "hasPreReleaseVersion": false
+        }
+    }
+]

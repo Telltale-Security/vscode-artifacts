@@ -1,0 +1,132 @@
+{
+  "index_patterns": [
+    "vscode-removed-snapshot-*"
+  ],
+  "priority": 501,
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0
+    },
+    "mappings": {
+      "dynamic_templates": [
+        {
+          "strings_as_keywords": {
+            "match_mapping_type": "string",
+            "mapping": {
+              "type": "keyword",
+              "ignore_above": 4096
+            }
+          }
+        }
+      ],
+      "properties": {
+        "@timestamp": {
+          "type": "date"
+        },
+        "event": {
+          "properties": {
+            "ingested": {
+              "type": "date"
+            },
+            "kind": {
+              "type": "keyword"
+            },
+            "category": {
+              "type": "keyword"
+            },
+            "type": {
+              "type": "keyword"
+            },
+            "dataset": {
+              "type": "keyword"
+            }
+          }
+        },
+        "threat": {
+          "properties": {
+            "indicator": {
+              "properties": {
+                "name": {
+                  "type": "keyword"
+                },
+                "type": {
+                  "type": "keyword"
+                },
+                "description": {
+                  "type": "keyword",
+                  "index": false,
+                  "doc_values": false
+                },
+                "reference": {
+                  "type": "keyword"
+                },
+                "provider": {
+                  "type": "keyword"
+                },
+                "first_seen": {
+                  "type": "date"
+                },
+                "last_seen": {
+                  "type": "date"
+                }
+              }
+            }
+          }
+        },
+        "vscode": {
+          "properties": {
+            "extension": {
+              "properties": {
+                "id": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "removal": {
+              "properties": {
+                "security_related": {
+                  "type": "boolean"
+                },
+                "reasons": {
+                  "type": "keyword"
+                },
+                "first_date": {
+                  "type": "date"
+                },
+                "last_date": {
+                  "type": "date"
+                },
+                "reason_unknown": {
+                  "type": "boolean"
+                },
+                "row_count": {
+                  "type": "long"
+                }
+              }
+            }
+          }
+        },
+        "feed": {
+          "properties": {
+            "revision": {
+              "type": "keyword"
+            },
+            "fetched_at": {
+              "type": "date"
+            },
+            "checked_at": {
+              "type": "date"
+            },
+            "source_url": {
+              "type": "keyword"
+            },
+            "row_count": {
+              "type": "long"
+            }
+          }
+        }
+      }
+    }
+  }
+}

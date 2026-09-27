@@ -1,0 +1,62 @@
+{
+  "rule_id": "vscode-removed-extension-installed",
+  "name": "VS Code extension with security-related marketplace removal is installed",
+  "description": "An Osquery inventory snapshot reports an installed VS Code extension whose identifier appears in Microsoft VS Marketplace removal history with a security-related reason. This is evidence of presence, not an installation-time event.",
+  "severity": "medium",
+  "risk_score": 47,
+  "type": "threat_match",
+  "enabled": true,
+  "language": "kuery",
+  "threat_language": "kuery",
+  "threat_index": [
+    "vscode-removed-current"
+  ],
+  "threat_query": "vscode.removal.security_related: true",
+  "threat_mapping": [
+    {
+      "entries": [
+        {
+          "field": "vscode.extension.id",
+          "type": "mapping",
+          "value": "threat.indicator.name"
+        }
+      ]
+    }
+  ],
+  "threat_indicator_path": "threat.indicator",
+  "interval": "5m",
+  "from": "now-15m",
+  "to": "now",
+  "timestamp_override": "event.ingested",
+  "timestamp_override_fallback_disabled": true,
+  "alert_suppression": {
+    "group_by": [
+      "host.id",
+      "vscode.user.profile_path",
+      "vscode.extension.id"
+    ],
+    "duration": {
+      "value": 24,
+      "unit": "h"
+    },
+    "missing_fields_strategy": "doNotSuppress"
+  },
+  "max_signals": 100,
+  "actions": [],
+  "tags": [
+    "VS Code",
+    "Microsoft VS Marketplace",
+    "Extension security"
+  ],
+  "references": [
+    "https://github.com/microsoft/vsmarketplace/blob/main/RemovedPackages.md"
+  ],
+  "false_positives": [
+    "The feed identifies extensions without affected version ranges. Review the removal reason, installed version, and current publisher status; a matching identifier alone does not establish malicious behavior."
+  ],
+  "note": "Review the source host, user profile, extension identifier and version. Read the Microsoft removal reason in threat.enrichments.indicator.description and follow threat.enrichments.indicator.reference. These rules cover recent ingested telemetry and inventory snapshots; they do not scan 30 days of historical activations. Events missing event.ingested are excluded. Alert suppression applies separately to each rule. Closing an alert may reset suppression under the default Elastic setting.",
+  "index": [
+    "logs-osquery_manager.result-windows_vscode"
+  ],
+  "query": "event.action: \"extension-inventory\" AND host.os.type: \"windows\" AND vscode.extension.id: *"
+}

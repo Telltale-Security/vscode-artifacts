@@ -1,0 +1,202 @@
+{
+  "description": "Parse VS Code extension activation messages and normalize correlation fields",
+  "_meta": {
+    "source": "logs-filestream.generic-windows_vscode"
+  },
+  "processors": [
+    {
+      "set": {
+        "description": "Preserve the raw log line",
+        "if": "ctx.message != null && ctx.message.contains('ExtensionService#_doActivateExtension')",
+        "field": "event.original",
+        "copy_from": "message"
+      }
+    },
+    {
+      "set": {
+        "description": "Preserve when Elastic Agent first read the event",
+        "if": "ctx.message != null && ctx.message.contains('ExtensionService#_doActivateExtension') && ctx['@timestamp'] != null && ctx?.event?.created == null",
+        "field": "event.created",
+        "copy_from": "@timestamp"
+      }
+    },
+    {
+      "grok": {
+        "description": "Parse VS Code extension activation fields",
+        "if": "ctx.message != null && ctx.message.contains('ExtensionService#_doActivateExtension')",
+        "field": "message",
+        "patterns": [
+          "^%{TIMESTAMP_ISO8601:_tmp.vscode_local_time} \\[%{LOGLEVEL:log.level}\\] ExtensionService#_doActivateExtension %{DATA:package.name}, startup: %{WORD:_tmp.vscode_startup}, activationEvent:\\s*'%{DATA:vscode.extension.activation_event}'(?:, root cause: %{GREEDYDATA:vscode.extension.root_cause})?$"
+        ],
+        "ecs_compatibility": "v1",
+        "tag": "parse-vscode-extension-activation",
+        "on_failure": [
+          {
+            "append": {
+              "field": "tags",
+              "value": "vscode-extension-activation-parse-failure",
+              "allow_duplicates": false
+            }
+          },
+          {
+            "set": {
+              "field": "error.message",
+              "value": "Unable to parse VS Code extension activation message: {{{_ingest.on_failure_message}}}"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "convert": {
+        "description": "Convert the startup flag to boolean",
+        "if": "ctx?._tmp?.vscode_startup != null",
+        "field": "_tmp.vscode_startup",
+        "target_field": "vscode.extension.startup",
+        "type": "boolean"
+      }
+    },
+    {
+      "set": {
+        "description": "Mark missing agent timezone without discarding the event",
+        "if": "ctx?.package?.name != null && ctx?.event?.timezone == null",
+        "field": "error.message",
+        "value": "event.timezone is missing; @timestamp could not be parsed from VS Code local time",
+        "override": false
+      }
+    },
+    {
+      "append": {
+        "description": "Tag activation events whose timezone is missing",
+        "if": "ctx?.package?.name != null && ctx?.event?.timezone == null",
+        "field": "tags",
+        "value": "vscode-extension-activation-timezone-missing",
+        "allow_duplicates": false
+      }
+    },
+    {
+      "date": {
+        "description": "Interpret local VS Code time with the agent timezone",
+        "if": "ctx?._tmp?.vscode_local_time != null && ctx?.event?.timezone != null",
+        "field": "_tmp.vscode_local_time",
+        "target_field": "_tmp.vscode_event_epoch",
+        "formats": [
+          "yyyy-MM-dd HH:mm:ss.SSS"
+        ],
+        "timezone": "{{{event.timezone}}}",
+        "output_format": "epoch_millis",
+        "tag": "interpret-vscode-local-time"
+      }
+    },
+    {
+      "date": {
+        "description": "Normalize the parsed instant to UTC",
+        "if": "ctx?._tmp?.vscode_event_epoch != null",
+        "field": "_tmp.vscode_event_epoch",
+        "target_field": "@timestamp",
+        "formats": [
+          "UNIX_MS"
+        ],
+        "timezone": "UTC",
+        "output_format": "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+        "tag": "normalize-vscode-time-to-utc"
+      }
+    },
+    {
+      "set": {
+        "if": "ctx?.package?.name != null",
+        "field": "event.kind",
+        "value": "event"
+      }
+    },
+    {
+      "set": {
+        "if": "ctx?.package?.name != null",
+        "field": "event.category",
+        "value": [
+          "package"
+        ]
+      }
+    },
+    {
+      "set": {
+        "if": "ctx?.package?.name != null",
+        "field": "event.type",
+        "value": [
+          "start"
+        ]
+      }
+    },
+    {
+      "set": {
+        "if": "ctx?.package?.name != null",
+        "field": "event.action",
+        "value": "extension-activated"
+      }
+    },
+    {
+      "set": {
+        "if": "ctx?.package?.name != null",
+        "field": "event.provider",
+        "value": "vscode"
+      }
+    },
+    {
+      "lowercase": {
+        "description": "Create a canonical extension identifier",
+        "if": "ctx?.event?.action == 'extension-activated'",
+        "field": "package.name",
+        "target_field": "vscode.extension.id",
+        "ignore_missing": true
+      }
+    },
+    {
+      "gsub": {
+        "description": "Normalize Windows log path separators",
+        "if": "ctx?.event?.action == 'extension-activated'",
+        "field": "log.file.path",
+        "target_field": "_tmp.vscode_log_path",
+        "pattern": "\\\\+",
+        "replacement": "/",
+        "ignore_missing": true
+      }
+    },
+    {
+      "grok": {
+        "description": "Extract the Windows user profile directory",
+        "if": "ctx?.event?.action == 'extension-activated'",
+        "field": "_tmp.vscode_log_path",
+        "patterns": [
+          "(?i)^(?<vscode.user.profile_path>.+)/AppData/Roaming/Code/logs/[^/]+/window[^/]+/exthost/exthost[.]log$"
+        ],
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "lowercase": {
+        "description": "Normalize the user profile correlation key",
+        "if": "ctx?.event?.action == 'extension-activated'",
+        "field": "vscode.user.profile_path",
+        "ignore_missing": true
+      }
+    },
+    {
+      "append": {
+        "description": "Flag activation events without a usable profile path",
+        "if": "ctx?.event?.action == 'extension-activated' && ctx?.vscode?.user?.profile_path == null",
+        "field": "tags",
+        "value": "vscode-profile-path-unavailable",
+        "allow_duplicates": false
+      }
+    },
+    {
+      "remove": {
+        "description": "Remove temporary parsing fields",
+        "if": "ctx._tmp != null",
+        "field": "_tmp",
+        "ignore_missing": true
+      }
+    }
+  ]
+}

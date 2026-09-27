@@ -1,0 +1,374 @@
+name: Refresh Microsoft removed VS Code extensions
+description: Fetch Microsoft removal history, validate every row, and atomically publish a complete indicator snapshot.
+enabled: false
+triggers:
+  - type: manual
+  - type: scheduled
+    with:
+      every: 1h
+settings:
+  timeout: 15m
+  max-step-size: 10mb
+  concurrency:
+    key: vscode-removed-feed
+    strategy: drop
+    max: 1
+consts:
+  source_url: https://raw.githubusercontent.com/microsoft/vsmarketplace/main/RemovedPackages.md
+  reference_url: https://github.com/microsoft/vsmarketplace/blob/main/RemovedPackages.md
+  newline: "\n"
+steps:
+  - name: initialize
+    type: data.set
+    with:
+      stage_index: "vscode-removed-stage-{{ execution.id | downcase }}"
+      snapshot_index: "vscode-removed-snapshot-{{ execution.id | downcase }}"
+      fetched_at: '{{ execution.startedAt | date: "%Y-%m-%dT%H:%M:%S.%LZ", 0 }}'
+      offset: 0
+      page_size: 1
+      after:
+        id: ""
+
+# Check how many rows are in the current snapshot (used later on to check for anomalies)
+  - name: previous_snapshot
+    type: elasticsearch.search
+    with:
+      allow_partial_search_results: false
+      index: vscode-removed-current
+      ignore_unavailable: true
+      allow_no_indices: true
+      size: 0
+      aggregations:
+        source_rows:
+          max:
+            field: feed.row_count
+
+  - name: fetch
+    type: http
+    timeout: 1m
+    with:
+      url: "{{ consts.source_url }}"
+      method: GET
+      headers:
+        Accept: text/plain
+
+  - name: require_download
+    type: data.find
+    items:
+      - status: "${{ steps.fetch.output.status }}"
+        bytes: "${{ steps.fetch.output.data | size }}"
+        legend: >-
+          {%- if steps.fetch.output.data contains 'Legend:' -%}present{%- else -%}missing{%- endif -%}
+    with:
+      condition: "item.status: 200 AND item.bytes > 0 AND item.bytes <= 2000000 AND item.legend: present"
+      errorIfEmpty: true
+
+  # Start only after the expected Markdown table header and separator.
+  # Every nonempty table line is validated; only the known Legend footer is skipped.
+  # Expose an array schema to the Workflow editor before iterating in Liquid.
+  - name: source_lines
+    type: data.concat
+    arrays:
+      - "${{ steps.fetch.output.data | split: consts.newline }}"
+    with: {}
+
+  - name: parse_rows
+    type: data.parseJson
+    source: |-
+      {%- assign header = false -%}
+      {%- assign table = false -%}
+      {%- assign separator = '' -%}
+      [
+      {%- for original_line in steps.source_lines.output -%}
+        {%- assign line = original_line | strip -%}
+        {%- if table and line == 'Legend:' -%}{%- break -%}{%- endif -%}
+        {%- if table -%}
+          {%- if line != '' -%}
+            {{ separator }}{"message":{{ line | json }},"line_number":{{ forloop.index }}}
+            {%- assign separator = ',' -%}
+          {%- endif -%}
+        {%- elsif line contains 'Extension Identifier' and line contains 'Removal Date' and line contains 'Type' -%}
+          {%- assign header = true -%}
+        {%- elsif header and line contains '---' and line contains '|' -%}
+          {%- assign table = true -%}
+        {%- endif -%}
+      {%- endfor -%}
+      ]
+    with: {}
+
+  - name: initialize_count
+    type: data.set
+    with:
+      row_count: "${{ steps.parse_rows.output | size }}"
+
+# Validate the number of rows.
+  - name: require_rows
+    type: data.find
+    items:
+      - count: "${{ variables.row_count }}"
+    with:
+      condition: "item.count >= 1000 AND item.count <= 100000 AND item.count >= {{ steps.previous_snapshot.output.aggregations.source_rows.value | default: 1000 | times: 9 | divided_by: 10 }}"
+      errorIfEmpty: true
+
+  - name: create_stage
+    type: elasticsearch.indices.create
+    with:
+      index: "{{ variables.stage_index }}"
+
+  - name: stage_batches
+    type: while
+    condition: "${{ variables.offset < variables.row_count }}"
+    max-iterations:
+      limit: 200
+      on-limit: fail
+    steps:
+      - name: stage_batch_rows
+        type: data.concat
+        arrays:
+          - "${{ steps.parse_rows.output | slice: variables.offset, 500 }}"
+        with: {}
+      - name: build_stage_bulk
+        type: data.parseJson
+        source: |-
+          [
+          {%- for row in steps.stage_batch_rows.output -%}
+            {%- unless forloop.first -%},{%- endunless -%}
+            {"index":{"_id":{{ row.line_number | append: '' | json }}}},
+            {{ row | json }}
+          {%- endfor -%}
+          ]
+        with: {}
+      - name: index_stage_batch
+        type: elasticsearch.bulk
+        with:
+          index: "{{ variables.stage_index }}"
+          pipeline: vscode-removed-row
+          operations: "${{ steps.build_stage_bulk.output }}"
+      - name: require_stage_bulk_success
+        type: data.find
+        items:
+          - errors: "${{ steps.index_stage_batch.output.errors }}"
+        with:
+          condition: "item.errors: false"
+          errorIfEmpty: true
+      - name: advance_offset
+        type: data.set
+        with:
+          offset: "${{ variables.offset | plus: 500 }}"
+
+  - name: refresh_stage
+    type: elasticsearch.request
+    with:
+      method: POST
+      path: "/{{ variables.stage_index }}/_refresh"
+
+  - name: count_stage
+    type: elasticsearch.request
+    with:
+      method: GET
+      path: "/{{ variables.stage_index }}/_count"
+
+  - name: require_complete_stage
+    type: data.find
+    items:
+      - count: "${{ steps.count_stage.output.count }}"
+        failed_shards: "${{ steps.count_stage.output._shards.failed }}"
+    with:
+      condition: "item.count: {{ variables.row_count }} AND item.failed_shards: 0"
+      errorIfEmpty: true
+
+  - name: create_snapshot
+    type: elasticsearch.indices.create
+    with:
+      index: "{{ variables.snapshot_index }}"
+
+  - name: aggregate_pages
+    type: while
+    condition: "${{ variables.page_size > 0 }}"
+    max-iterations:
+      limit: 201
+      on-limit: fail
+    steps:
+      - name: group_rows
+        type: elasticsearch.search
+        with:
+          allow_partial_search_results: false
+          index: "{{ variables.stage_index }}"
+          size: 0
+          track_total_hits: true
+          aggregations:
+            extensions:
+              composite:
+                size: 500
+                sources:
+                  - id:
+                      terms:
+                        field: extension_id
+                after: "${{ variables.after }}"
+              aggregations:
+                first_date:
+                  min:
+                    field: removal_date
+                    format: yyyy-MM-dd
+                last_date:
+                  max:
+                    field: removal_date
+                    format: yyyy-MM-dd
+                reasons:
+                  terms:
+                    field: removal_reason
+                    size: 100
+                security:
+                  max:
+                    field: security_rank
+                unknown:
+                  filter:
+                    term:
+                      reason_unknown:
+                        value: true
+
+      - name: require_complete_search
+        type: data.find
+        items:
+          - failed_shards: "${{ steps.group_rows.output._shards.failed }}"
+            timed_out: "${{ steps.group_rows.output.timed_out }}"
+            source_count: "${{ steps.group_rows.output.hits.total.value }}"
+        with:
+          condition: "item.failed_shards: 0 AND item.timed_out: false AND item.source_count: {{ variables.row_count }}"
+          errorIfEmpty: true
+
+      - name: require_complete_reasons
+        type: data.filter
+        items: "${{ steps.group_rows.output.aggregations.extensions.buckets }}"
+        with:
+          condition: "item.reasons.sum_other_doc_count > 0"
+
+      - name: assert_reasons_not_truncated
+        type: data.find
+        items:
+          - truncated: "${{ steps.require_complete_reasons.output | size }}"
+        with:
+          condition: "item.truncated: 0"
+          errorIfEmpty: true
+
+      - name: record_page
+        type: data.set
+        with:
+          page_size: "${{ steps.group_rows.output.aggregations.extensions.buckets | size }}"
+          after: "${{ steps.group_rows.output.aggregations.extensions.after_key | default: variables.after }}"
+
+# Create one document per extension
+      - name: publish_nonempty_page
+        type: if
+        condition: "variables.page_size > 0"
+        steps:
+          - name: snapshot_page_buckets
+            type: data.concat
+            arrays:
+              - "${{ steps.group_rows.output.aggregations.extensions.buckets }}"
+            with: {}
+          - name: build_snapshot_bulk
+            type: data.parseJson
+            source: |-
+              [
+              {%- for bucket in steps.snapshot_page_buckets.output -%}
+                {%- unless forloop.first -%},{%- endunless -%}
+                {"index":{"_id":{{ bucket.key.id | json }}}},
+                {
+                  "@timestamp":{{ variables.fetched_at | json }},
+                  "event":{"kind":"enrichment","category":["threat"],"type":["indicator"],"ingested":{{ variables.fetched_at | json }}},
+                  "threat":{"indicator":{
+                    "name":{{ bucket.key.id | json }},
+                    "type":"software",
+                    "description":{{ bucket.reasons.buckets | map: 'key' | join: '; ' | prepend: 'Microsoft VS Marketplace removal history: ' | json }},
+                    "reference":{{ consts.reference_url | json }},
+                    "provider":"Microsoft VS Marketplace"
+                  }},
+                  "vscode":{
+                    "extension":{"id":{{ bucket.key.id | json }}},
+                    "removal":{
+                      "security_related":{% if bucket.security.value > 0 %}true{% else %}false{% endif %},
+                      "reasons":{{ bucket.reasons.buckets | map: 'key' | json }},
+                      "first_date":{{ bucket.first_date.value_as_string | json }},
+                      "last_date":{{ bucket.last_date.value_as_string | json }},
+                      "reason_unknown":{% if bucket.unknown.doc_count > 0 %}true{% else %}false{% endif %},
+                      "row_count":{{ bucket.doc_count }}
+                    }
+                  },
+                  "feed":{
+                    "revision":{{ execution.id | json }},
+                    "fetched_at":{{ variables.fetched_at | json }},
+                    "source_url":{{ consts.source_url | json }},
+                    "row_count":{{ variables.row_count }}
+                  }
+                }
+              {%- endfor -%}
+              ]
+            with: {}
+          - name: index_snapshot_page
+            type: elasticsearch.bulk
+            with:
+              index: "{{ variables.snapshot_index }}"
+              operations: "${{ steps.build_snapshot_bulk.output }}"
+          - name: require_snapshot_bulk_success
+            type: data.find
+            items:
+              - errors: "${{ steps.index_snapshot_page.output.errors }}"
+            with:
+              condition: "item.errors: false"
+              errorIfEmpty: true
+
+  - name: refresh_snapshot
+    type: elasticsearch.request
+    with:
+      method: POST
+      path: "/{{ variables.snapshot_index }}/_refresh"
+
+  - name: verify_snapshot
+    type: elasticsearch.search
+    with:
+      allow_partial_search_results: false
+      index: "{{ variables.snapshot_index }}"
+      size: 0
+      track_total_hits: true
+      aggregations:
+        represented_rows:
+          sum:
+            field: vscode.removal.row_count
+
+  - name: require_complete_snapshot
+    type: data.find
+    items:
+      - count: "${{ steps.verify_snapshot.output.hits.total.value }}"
+        represented_rows: "${{ steps.verify_snapshot.output.aggregations.represented_rows.value }}"
+        failed_shards: "${{ steps.verify_snapshot.output._shards.failed }}"
+        timed_out: "${{ steps.verify_snapshot.output.timed_out }}"
+    with:
+      condition: "item.count > 0 AND item.represented_rows: {{ variables.row_count }} AND item.failed_shards: 0 AND item.timed_out: false"
+      errorIfEmpty: true
+
+  # One atomic alias operation. No current snapshot is exposed before this step.
+  - name: activate_snapshot
+    type: elasticsearch.request
+    with:
+      method: POST
+      path: /_aliases
+      body:
+        actions:
+          - remove:
+              index: vscode-removed-snapshot-*
+              alias: vscode-removed-current
+              must_exist: false
+          - add:
+              index: "{{ variables.snapshot_index }}"
+              alias: vscode-removed-current
+
+  - name: delete_successful_stage
+    type: elasticsearch.indices.delete
+    with:
+      index: "{{ variables.stage_index }}"
+
+  - name: finished
+    type: console
+    with:
+      message: "Published {{ steps.verify_snapshot.output.hits.total.value }} extension IDs from {{ variables.row_count }} source rows to vscode-removed-current."

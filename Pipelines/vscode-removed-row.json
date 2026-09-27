@@ -1,0 +1,70 @@
+{
+  "description": "Parse Microsoft RemovedPackages.md table rows",
+  "processors": [
+    {
+      "grok": {
+        "field": "message",
+        "patterns": [
+          "^\\|[\\s\u00a0]*(?<extension_id>[A-Za-z0-9_-]+\\.[A-Za-z0-9_.-]+)[\\s\u00a0]*\\|[\\s\u00a0]*(?<removal_date>[0-9]{1,2}/[0-9]{1,2}/[0-9]{4})[\\s\u00a0]*\\|[\\s\u00a0]*(?<removal_reason>[^|\\r\\n]+?)[\\s\u00a0]*\\|?[\\s\u00a0]*$"
+        ]
+      }
+    },
+    {
+      "lowercase": {
+        "field": "extension_id"
+      }
+    },
+    {
+      "trim": {
+        "field": "removal_reason"
+      }
+    },
+    {
+      "date": {
+        "field": "removal_date",
+        "target_field": "removal_date",
+        "formats": [
+          "M/d/yyyy"
+        ],
+        "timezone": "UTC"
+      }
+    },
+    {
+      "lowercase": {
+        "field": "removal_reason",
+        "target_field": "_tmp.reason"
+      }
+    },
+    {
+      "set": {
+        "field": "security_rank",
+        "value": 0
+      }
+    },
+    {
+      "set": {
+        "if": "['malware', 'impersonation', 'untrustworthy', 'spam', 'potentially malicious', 'typo-squatting', 'expired domain', 'spam / malware', 'impersonation, malware'].contains(ctx._tmp.reason)",
+        "field": "security_rank",
+        "value": 1
+      }
+    },
+    {
+      "set": {
+        "field": "reason_unknown",
+        "value": false
+      }
+    },
+    {
+      "set": {
+        "if": "!['malware', 'impersonation', 'untrustworthy', 'spam', 'potentially malicious', 'typo-squatting', 'expired domain', 'spam / malware', 'impersonation, malware', 'owner request', 'publisher requested', 'deprecated', 'copyright violation'].contains(ctx._tmp.reason)",
+        "field": "reason_unknown",
+        "value": true
+      }
+    },
+    {
+      "remove": {
+        "field": "_tmp"
+      }
+    }
+  ]
+}
