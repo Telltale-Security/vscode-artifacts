@@ -1,6 +1,6 @@
 name: Refresh Microsoft removed VS Code extensions
 description: Fetch Microsoft removal history, validate every row, and atomically publish a complete indicator snapshot.
-enabled: false
+enabled: true
 triggers:
   - type: manual
   - type: scheduled
